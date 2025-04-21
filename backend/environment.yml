@@ -1,0 +1,29 @@
+name: attendance-system
+channels:
+  - conda-forge
+dependencies:
+  - python=3.7
+  - python-decouple
+  - psycopg2
+  - pip
+  - bcrypt
+  - csvkit
+  - numpy
+  - scipy
+  - opencv
+  - imutils
+  - dlib
+  - pandas
+  - pillow
+  - pyfiglet
+  - flask
+  - requests
+  - flask-cors
+  - flask-restful
+  - flask-jwt-extended
+  - sqlalchemy
+  - marshmallow
+  - marshmallow-sqlalchemy
+  - pip:
+      - face-recognition
+      - flask-reuploaded
