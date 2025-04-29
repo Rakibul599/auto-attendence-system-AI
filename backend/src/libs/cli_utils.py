@@ -96,7 +96,7 @@ class CliAppUtils:
         print("[INFO] loading encodings...")
         data = pickle.loads(open(ENCODINGS_FILE, "rb").read())
         # print(len(data['encodings']) == len(data['ids']))
-
+        
         print("[INFO] starting video stream...")
         # store input video stream in cap variable
         cap = cv2.VideoCapture(self.input_video)

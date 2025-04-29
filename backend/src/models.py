@@ -87,7 +87,10 @@ class AttendanceModel(Base):
     #     foreign_keys="StudentModel.id",
     #     backref=backref("attendances", lazy="dynamic")
     # )
-
+    @classmethod
+    def exists_by_id(cls, _id: int) -> bool:
+        return Session.query(cls).filter_by(student_id=_id).first()
+    
     @classmethod
     def find_by_date(cls, date: dt, student: StudentModel) -> "AttendanceModel":
         return Session.query(cls).filter_by(date=date, student=student).first()
@@ -110,12 +113,12 @@ class AttendanceModel(Base):
 
     @classmethod
     def is_marked(cls, date: dt, student: StudentModel) -> bool:
-        marked = AttendanceModel.find_by_date(date, student)
-        if marked is None:
-            marked = False
-        else:
-            marked = True
-        return marked
+        date_only = date.date()  # Extract only date part from datetime
+        marked = Session.query(cls).filter(
+            func.date(cls.date) == date_only,
+            cls.student_id == student.id
+        ).first()
+        return marked is not None
 
     def save_to_db(self) -> None:
         Session.add(self)

@@ -46,7 +46,7 @@ class RecognitionCamera(BaseCamera):
 
     @classmethod
     def recognize_n_attendance(cls, frame: np.ndarray,
-                               data: Dict, known_students: Dict) -> bytes:
+        data: Dict, known_students: Dict) -> bytes:
         # convert the input frame from BGR to RGB then resize it to have
         # a width of 750px (to speedup processing)
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
