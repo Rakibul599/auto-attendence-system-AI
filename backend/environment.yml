@@ -24,6 +24,8 @@ dependencies:
   - sqlalchemy
   - marshmallow
   - marshmallow-sqlalchemy
+  - flask-socketio=5.3.2
+  - python-socketio=5.7.2
   - pip:
       - face-recognition
       - flask-reuploaded
