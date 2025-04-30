@@ -1,11 +1,10 @@
 from flask import Flask
 from flask_socketio import SocketIO, emit
-import base64
 import cv2
 import numpy as np
 import face_recognition
 import pickle
-import os
+import base64
 from datetime import datetime as dt
 from src.models import StudentModel, AttendanceModel
 from src.settings import (
@@ -51,13 +50,10 @@ def recognize_faces_and_mark_attendance(encodings):
                 else:
                     student = StudentModel.find_by_id(_id)
                     known_students[_id] = student
-                    
 
                 if not AttendanceModel.is_marked(dt.today(), student):
                     student_attendance = AttendanceModel(student=student)
-                    # if not AttendanceModel.exists_by_id(student.id):
                     student_attendance.save_to_db()
-                    # else : continue
 
                 display_name = student.name
 
@@ -65,28 +61,30 @@ def recognize_faces_and_mark_attendance(encodings):
 
     return names
 
-# ====== Handle Incoming Frame from Client ======
+# ====== Handle Incoming Frame from Client (binary) ======
 @socketio.on('client_frame')
 def handle_client_frame(data):
     try:
-        # Decode base64 image
-        base64_data = data['image'].split(',')[1]
-        image_data = base64.b64decode(base64_data)
-        np_arr = np.frombuffer(image_data, np.uint8)
+        # Decode bytes -> numpy array
+        np_arr = np.frombuffer(data, np.uint8)
         frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-        # Convert to RGB
+        if frame is None:
+            print("[ERROR] Frame decoding failed.")
+            return
+
+        # Convert BGR to RGB
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         r = frame.shape[1] / float(rgb.shape[1])
 
-        # Detect and encode faces
+        # Face detection and encoding
         boxes = face_recognition.face_locations(rgb, model=DLIB_MODEL)
         encodings = face_recognition.face_encodings(rgb, boxes)
 
-        # Recognize & mark attendance
+        # Face recognition and attendance marking
         names = recognize_faces_and_mark_attendance(encodings)
 
-        # Draw results
+        # Draw bounding boxes and names
         for ((top, right, bottom, left), name) in zip(boxes, names):
             top = int(top * r)
             right = int(right * r)
@@ -97,14 +95,14 @@ def handle_client_frame(data):
             y = top - 15 if top - 15 > 15 else top + 15
             cv2.putText(frame, str(name), (left, y), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 255, 0), 2)
 
-        # Encode back to base64
-        _, buffer = cv2.imencode('.jpg', frame)
-        encoded_image = base64.b64encode(buffer).decode('utf-8')
+        # Encode frame back to JPEG
+        success, buffer = cv2.imencode('.jpg', frame)
+        if not success:
+            print("[ERROR] Failed to encode frame.")
+            return
 
-        emit('processed_frame', {
-            'image': f'data:image/jpeg;base64,{encoded_image}',
-            'recognized_names': names
-        })
+        # Instead of base64, send raw buffer
+        emit('processed_frame', buffer.tobytes(), broadcast=True)
 
     except Exception as e:
         print("[ERROR]", e)
@@ -148,7 +146,7 @@ class VideoAttendanceRecognizer:
 
         cap.release()
         cv2.destroyAllWindows()
-        print("Attendance Successful!")
+        print("[INFO] Attendance Successful!")
 
 # ====== Start Server ======
 if __name__ == '__main__':

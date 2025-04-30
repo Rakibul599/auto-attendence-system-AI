@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import io from "socket.io-client";
 
-const socket = io("http://localhost:5000"); // Adjust if needed
+// const socket = io("http://localhost:5000"); // Adjust if needed
+const socket = io("http://localhost:5000", {
+  transports: ["websocket"],
+});
 import {
   Calendar,
   Clock,
@@ -34,17 +37,15 @@ function App() {
         video: { facingMode: "user" },
         audio: false,
       });
-
+  
       streamRef.current = stream;
-      setShowCamera(true); // Open camera modal
-
+      setShowCamera(true); // Open modal or camera view
+  
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current
-            .play()
-            .catch((err) => console.error("Play error:", err));
-
+          videoRef.current.play().catch((err) => console.error("Play error:", err));
+  
           intervalId.current = setInterval(() => {
             const canvas = canvasRef.current;
             const video = videoRef.current;
@@ -52,16 +53,26 @@ function App() {
               const context = canvas.getContext("2d");
               if (context) {
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const dataUrl = canvas.toDataURL("image/jpeg");
-                socket.emit("client_frame", { image: dataUrl });
+                canvas.toBlob((blob) => {
+                  if (blob) {
+                    blob.arrayBuffer().then((buffer) => {
+                      socket.emit("client_frame", new Uint8Array(buffer));
+                    });
+                  }
+                }, "image/jpeg", 0.6); // 80% quality JPEG
               }
             }
-          }, 200); // ~5fps
+          }, 400); // ~5 FPS
         }
-      }, 300); // Wait for video to load
-      socket.on("processed_frame", (data) => {
-        setProcessedImage(data.image); // base64 string
+      }, 300);
+  
+      // === Handle binary processed_frame from server ===
+      socket.on("processed_frame", (buffer) => {
+        const blob = new Blob([buffer], { type: "image/jpeg" });
+        const url = URL.createObjectURL(blob);
+        setProcessedImage(url); // Show in <img src={processedImage} />
       });
+  
     } catch (err) {
       console.error("Error accessing camera:", err);
     }
@@ -197,8 +208,8 @@ function App() {
                 {/* Hidden Canvas */}
                 <canvas
                   ref={canvasRef}
-                  width="400"
-                  height="300"
+                  width="320"
+                  height="240"
                   style={{ display: "none" }}
                 />
                 {processedImage && (
