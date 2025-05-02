@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import io from "socket.io-client";
+import jsPDF from 'jspdf';
+import 'jspdf-autotable'; 
 
 // const socket = io("http://localhost:5000"); // Adjust if needed
 const socket = io("http://localhost:5000", {
@@ -31,8 +33,6 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalId = useRef<NodeJS.Timeout | null>(null);
   const [processedImage, setProcessedImage] = useState("");
- 
-
 
   // if(activeTab=="attendance") console.log("hello")
   const startCamera = async () => {
@@ -41,15 +41,17 @@ function App() {
         video: { facingMode: "user" },
         audio: false,
       });
-  
+
       streamRef.current = stream;
       setShowCamera(true); // Open modal or camera view
-  
+
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
-          videoRef.current.play().catch((err) => console.error("Play error:", err));
-  
+          videoRef.current
+            .play()
+            .catch((err) => console.error("Play error:", err));
+
           intervalId.current = setInterval(() => {
             const canvas = canvasRef.current;
             const video = videoRef.current;
@@ -57,26 +59,29 @@ function App() {
               const context = canvas.getContext("2d");
               if (context) {
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                canvas.toBlob((blob) => {
-                  if (blob) {
-                    blob.arrayBuffer().then((buffer) => {
-                      socket.emit("client_frame", new Uint8Array(buffer));
-                    });
-                  }
-                }, "image/jpeg", 0.6); // 60% quality JPEG
+                canvas.toBlob(
+                  (blob) => {
+                    if (blob) {
+                      blob.arrayBuffer().then((buffer) => {
+                        socket.emit("client_frame", new Uint8Array(buffer));
+                      });
+                    }
+                  },
+                  "image/jpeg",
+                  0.6
+                ); // 60% quality JPEG
               }
             }
           }, 400); // ~2.5 FPS
         }
       }, 300);
-  
+
       // === Handle binary processed_frame from server ===
       socket.on("processed_frame", (buffer) => {
         const blob = new Blob([buffer], { type: "image/jpeg" });
         const url = URL.createObjectURL(blob);
         setProcessedImage(url); // Show in <img src={processedImage} />
       });
-  
     } catch (err) {
       console.error("Error accessing camera:", err);
     }
@@ -105,6 +110,7 @@ function App() {
           <AttendanceContent
             selectedDate={selectedDate}
             setSelectedDate={setSelectedDate}
+            activeTab={activeTab}
           />
         );
       case "employees":
@@ -114,7 +120,7 @@ function App() {
       case "settings":
         return <SettingsContent />;
       default:
-        return <DashboardContent activeTab={activeTab}/>;
+        return <DashboardContent activeTab={activeTab} />;
     }
   };
 
@@ -137,7 +143,10 @@ function App() {
           ].map((item) => (
             <button
               key={item.id}
-              onClick={() => { setActiveTab(item.id); handleSidebar(item.id); }}
+              onClick={() => {
+                setActiveTab(item.id);
+                handleSidebar(item.id);
+              }}
               className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === item.id
                   ? "bg-indigo-50 text-indigo-600"
@@ -205,8 +214,7 @@ function App() {
                   ✕
                 </button>
               </div>
-
-              <div className="flex justify-center">
+              {/* <div className="flex justify-center">
                 <video
                   ref={videoRef}
                   width="400"
@@ -217,7 +225,7 @@ function App() {
                   className="border border-indigo-500 rounded-lg"
                 />
                 {/* Hidden Canvas */}
-                <canvas
+              {/* <canvas
                   ref={canvasRef}
                   width="320"
                   height="240"
@@ -235,8 +243,35 @@ function App() {
                     />
                   </div>
                 )}
+              </div> } */}
+            {/* new code  */}
+              <div className="flex justify-center gap-4">
+                <div className="w-[400px] h-[300px] border border-indigo-500 rounded-lg overflow-hidden">
+                  <video
+                    ref={videoRef}
+                    muted
+                    autoPlay
+                    playsInline
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <canvas
+                  ref={canvasRef}
+                  width="420"
+                  height="340"
+                  style={{ display: "none" }}
+                />
+                {processedImage && (
+                  <div className="w-[400px] h-[300px] border border-green-500 rounded-lg overflow-hidden">
+                    <img
+                      src={processedImage}
+                      alt="Processed"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                )}
               </div>
-
+              {/*  */}
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={stopCamera}
@@ -255,12 +290,12 @@ function App() {
   );
 }
 
- function DashboardContent({ activeTab }: { activeTab: string }) {
+function DashboardContent({ activeTab }: { activeTab: string }) {
   console.log(activeTab);
   const [dashboarddata, setDashboarddata] = useState<any>(null);
-  const [totalstudent,setTotalstudent]=useState<number>(0)
-  const [presentToday, setPresentToday] = useState([]);
- 
+  const [totalstudent, setTotalstudent] = useState<number>(0);
+  const [presentToday, setPresentToday] = useState<Array>([]);
+
   useEffect(() => {
     if (activeTab === "dashboard") {
       const fetchData = async () => {
@@ -282,8 +317,9 @@ function App() {
             .map((student: any) => ({
               id: student.id,
               name: student.name,
-              time: student.date_time.dates[student.date_time.dates.length-1].time,
-              status: "Checked In" 
+              time: student.date_time.dates[student.date_time.dates.length - 1]
+                .time,
+              status: "Checked In",
             }));
 
           setPresentToday(filtered);
@@ -296,8 +332,6 @@ function App() {
       fetchData();
     }
   }, [activeTab]);
-
-
 
   return (
     <div className="space-y-6">
@@ -348,38 +382,39 @@ function App() {
           </div>
           <div className="space-y-4">
             {
-            // [
-            //   { name: "Sarah Wilson", time: "9:00 AM", status: "Checked In" },
-            //   { name: "Michael Chen", time: "9:05 AM", status: "Checked In" },
-            //   { name: "Emma Thompson", time: "9:15 AM", status: "Checked In" },
-            //   {
-            //     name: "James Rodriguez",
-            //     time: "9:30 AM",
-            //     status: "Checked In",
-            //   },
-            // ]
-            
-            presentToday.map((activity, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                    {activity.name.charAt(0)}
+              // [
+              //   { name: "Sarah Wilson", time: "9:00 AM", status: "Checked In" },
+              //   { name: "Michael Chen", time: "9:05 AM", status: "Checked In" },
+              //   { name: "Emma Thompson", time: "9:15 AM", status: "Checked In" },
+              //   {
+              //     name: "James Rodriguez",
+              //     time: "9:30 AM",
+              //     status: "Checked In",
+              //   },
+              // ]
+
+              presentToday.map((activity, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                      {activity.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">
+                        {activity.name}
+                      </p>
+                      <p className="text-xs text-gray-500">{activity.time}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {activity.name}
-                    </p>
-                    <p className="text-xs text-gray-500">{activity.time}</p>
-                  </div>
+                  <span className="px-3 py-1 text-xs font-medium text-green-700 bg-green-50 rounded-full">
+                    {activity.status}
+                  </span>
                 </div>
-                <span className="px-3 py-1 text-xs font-medium text-green-700 bg-green-50 rounded-full">
-                  {activity.status}
-                </span>
-              </div>
-            ))}
+              ))
+            }
           </div>
         </div>
 
@@ -433,10 +468,116 @@ function App() {
 function AttendanceContent({
   selectedDate,
   setSelectedDate,
+  activeTab
 }: {
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
+  activeTab: string;
 }) {
+
+  console.log(activeTab);
+
+  const [presentToday, setPresentToday] = useState<Array>([]);
+
+  useEffect(() => {
+    if (activeTab === "attendance") {
+      const fetchData = async () => {
+        try {
+          const response = await axios.get("http://localhost:5000/dashboard");
+          const data = response.data;
+  
+  
+          const today = new Date().toISOString().split("T")[0];
+  
+          const presentStudents = data.filter((student: any) =>
+            student.date_time?.dates?.some(
+              (entry: any) => entry.attendance_date === today
+            )
+          ).map((student: any) => ({
+            id: student.id,
+            name: student.name,
+            department:"CSE",
+            checkin: student.date_time.dates[student.date_time.dates.length - 1].time,
+            checkout:"--",
+            status: "Present",
+          }));
+  
+          const presentIds = new Set(presentStudents.map((s: any) => s.id));
+  
+          const absentStudents = data.filter((student: any) => !presentIds.has(student.id))
+            .map((student: any) => ({
+              id: student.id,
+              name: student.name,
+              department:"CSE",
+              checkin: "--",
+              checkout:"--",
+              status: "Absent",
+            }));
+  
+          const finalAttendance = [...presentStudents, ...absentStudents];
+  
+          setPresentToday(finalAttendance);
+          console.log("Today's Attendance:", finalAttendance);
+        } catch (error) {
+          console.error(error);
+        }
+      };
+  
+      fetchData();
+    }
+  }, [activeTab]);
+
+  // genarate pdf
+  const generatePDF = () => {
+    console.log("hello")
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('Student Attendance Report', 14, 22);
+    doc.setFontSize(11);
+
+    const headers = [['STUDENT', 'DEPARTMENT', 'CHECK IN', 'CHECK OUT', 'STATUS']];
+
+    const rows = presentToday.map(std => [
+      std.name,
+      std.department,
+      std.checkin,
+      std.checkout,
+      std.status
+    ]);
+
+    doc.autoTable({
+      startY: 30,
+      head: headers,
+      body: rows,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [240, 240, 240],
+        textColor: [80, 80, 80],
+        fontStyle: 'bold',
+      },
+      bodyStyles: {
+        valign: 'middle',
+      },
+      styles: {
+        cellPadding: 4,
+        fontSize: 10,
+        overflow: 'linebreak',
+      },
+      didParseCell: function (data) {
+        if (data.column.index === 4 && data.cell.text[0] === 'Present') {
+          data.cell.styles.fillColor = [212, 237, 218]; // light green
+          data.cell.styles.textColor = [40, 167, 69];    // green
+        }
+        else if(data.column.index === 4 && data.cell.text[0] === 'Absent'){
+          data.cell.styles.fillColor = [248, 215, 218]; // light red
+          data.cell.styles.textColor = [220, 53, 69];   // red
+        }
+      }
+    });
+
+    doc.save('students-attendance.pdf');
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -477,7 +618,7 @@ function AttendanceContent({
             <Filter className="h-5 w-5" />
             Filter
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50" onClick={generatePDF}>
             <Download className="h-5 w-5" />
             Export
           </button>
@@ -490,7 +631,7 @@ function AttendanceContent({
             <thead>
               <tr className="bg-gray-50">
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employee
+                  Student
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Department
@@ -510,67 +651,69 @@ function AttendanceContent({
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {[
-                {
-                  name: "Sarah Wilson",
-                  department: "CSE",
-                  checkIn: "9:00 AM",
-                  checkOut: "5:00 PM",
-                  status: "Present",
-                },
-                {
-                  name: "Michael Chen",
-                  department: "CSE",
-                  checkIn: "9:05 AM",
-                  checkOut: "5:15 PM",
-                  status: "Present",
-                },
-                {
-                  name: "Emma Thompson",
-                  department: "CSE",
-                  checkIn: "9:15 AM",
-                  checkOut: "5:30 PM",
-                  status: "Present",
-                },
-                {
-                  name: "James Rodriguez",
-                  department: "CSE",
-                  checkIn: "9:30 AM",
-                  checkOut: "5:45 PM",
-                  status: "Present",
-                },
-              ].map((employee, index) => (
+              {
+              // [
+              //   {
+              //     name: "Sarah Wilson",
+              //     department: "CSE",
+              //     checkIn: "9:00 AM",
+              //     checkOut: "5:00 PM",
+              //     status: "Present",
+              //   },
+              //   {
+              //     name: "Michael Chen",
+              //     department: "CSE",
+              //     checkIn: "9:05 AM",
+              //     checkOut: "5:15 PM",
+              //     status: "Present",
+              //   },
+              //   {
+              //     name: "Emma Thompson",
+              //     department: "CSE",
+              //     checkIn: "9:15 AM",
+              //     checkOut: "5:30 PM",
+              //     status: "Present",
+              //   },
+              //   {
+              //     name: "James Rodriguez",
+              //     department: "CSE",
+              //     checkIn: "9:30 AM",
+              //     checkOut: "5:45 PM",
+              //     status: "Present",
+              //   },
+              // ]
+              presentToday.map((student, index) => (
                 <tr key={index}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                        {employee.name.charAt(0)}
+                        {student.name.charAt(0)}
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">
-                          {employee.name}
+                          {student.name}
                         </div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {employee.department}
+                      {student.department}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {employee.checkIn}
+                      {student.checkin}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">
-                      {employee.checkOut}
+                      {student.checkout}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-3 py-1 text-xs font-medium text-green-700 bg-green-50 rounded-full">
-                      {employee.status}
+                    <span className={`px-3 py-1 text-xs font-medium ${student.status=="Present" ? "text-green-700": "text-red-700"}  bg-green-50 rounded-full`}>
+                      {student.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
