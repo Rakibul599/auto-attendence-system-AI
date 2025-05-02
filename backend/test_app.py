@@ -1,4 +1,5 @@
-from flask import Flask
+from flask import Flask, jsonify
+from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 import cv2
 import numpy as np
@@ -17,6 +18,7 @@ from src.settings import (
 
 # ====== Flask App Setup ======
 app = Flask(__name__)
+CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ====== Load Known Encodings from Pickle File ======
@@ -147,6 +149,37 @@ class VideoAttendanceRecognizer:
         cap.release()
         cv2.destroyAllWindows()
         print("[INFO] Attendance Successful!")
+# app = Flask(__name__)
+# CORS(app)  # This will allow all domains (development only)
+# another route
+@app.route('/dashboard',methods=['GET'])
+def dashboard():
+    students=StudentModel.find_all()
+    attendances = AttendanceModel.find_all()
+    all_info = []
+    for student in students:
+        # print(student.name)
+        date_time = {
+            "dates": []
+        }
+
+        for attendance in attendances:
+            if student.id == attendance.student_id:
+                date_time["dates"].append({
+                    "attendance_date": attendance.date.strftime("%Y-%m-%d"),
+                    "time":attendance.date.strftime("%I-%M-%p")
+                })
+        student_data = {
+            "id": student.id,
+            "name": student.name,
+            "date_time": date_time
+        }
+        
+        all_info.append(student_data)
+    print(all_info)
+    student_json = jsonify(all_info)
+    # print(student_json)
+    return student_json, 200
 
 # ====== Start Server ======
 if __name__ == '__main__':

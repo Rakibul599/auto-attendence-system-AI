@@ -59,6 +59,11 @@ class StudentModel(Base):
     @classmethod
     def find_all(cls) -> List["StudentModel"]:
         return Session.query(cls).all()
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name
+        }
 
     def save_to_db(self) -> None:
         Session.add(self)

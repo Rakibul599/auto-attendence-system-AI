@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import axios from "axios";
 
 function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -30,7 +31,10 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalId = useRef<NodeJS.Timeout | null>(null);
   const [processedImage, setProcessedImage] = useState("");
+ 
 
+
+  // if(activeTab=="attendance") console.log("hello")
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -59,10 +63,10 @@ function App() {
                       socket.emit("client_frame", new Uint8Array(buffer));
                     });
                   }
-                }, "image/jpeg", 0.6); // 80% quality JPEG
+                }, "image/jpeg", 0.6); // 60% quality JPEG
               }
             }
-          }, 400); // ~5 FPS
+          }, 400); // ~2.5 FPS
         }
       }, 300);
   
@@ -90,20 +94,27 @@ function App() {
     setShowCamera(false);
   };
 
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
   const renderContent = () => {
     switch (activeTab) {
       case "dashboard":
-        return <DashboardContent />;
+        return <DashboardContent activeTab={activeTab} />;
       case "attendance":
-        return <AttendanceContent />;
+        return (
+          <AttendanceContent
+            selectedDate={selectedDate}
+            setSelectedDate={setSelectedDate}
+          />
+        );
       case "employees":
-        return <EmployeesContent />;
+        return <StudentsContent />;
       case "logs":
         return <TimeLogsContent />;
       case "settings":
         return <SettingsContent />;
       default:
-        return <DashboardContent />;
+        return <DashboardContent activeTab={activeTab}/>;
     }
   };
 
@@ -126,7 +137,7 @@ function App() {
           ].map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => { setActiveTab(item.id); handleSidebar(item.id); }}
               className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === item.id
                   ? "bg-indigo-50 text-indigo-600"
@@ -244,20 +255,63 @@ function App() {
   );
 }
 
-function DashboardContent() {
+ function DashboardContent({ activeTab }: { activeTab: string }) {
+  console.log(activeTab);
+  const [dashboarddata, setDashboarddata] = useState<any>(null);
+  const [totalstudent,setTotalstudent]=useState<number>(0)
+  const [presentToday, setPresentToday] = useState([]);
+ 
+  useEffect(() => {
+    if (activeTab === "dashboard") {
+      const fetchData = async () => {
+        try {
+          const response = await axios.get("http://localhost:5000/dashboard");
+          const data = response.data;
+
+          setDashboarddata(data);
+          setTotalstudent(data.length);
+
+          // Filter for today's attendance
+          const today = new Date().toISOString().split("T")[0];
+          const filtered = data
+            .filter((student: any) =>
+              student.date_time?.dates?.some(
+                (entry: any) => entry.attendance_date === today
+              )
+            )
+            .map((student: any) => ({
+              id: student.id,
+              name: student.name,
+              time: student.date_time.dates[student.date_time.dates.length-1].time,
+              status: "Checked In" 
+            }));
+
+          setPresentToday(filtered);
+          console.log("Present today:", filtered);
+        } catch (error) {
+          console.error(error);
+        }
+      };
+
+      fetchData();
+    }
+  }, [activeTab]);
+
+
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         {[
           {
             title: "Total Students",
-            value: "156",
+            value: totalstudent,
             icon: Users,
             color: "bg-blue-500",
           },
           {
             title: "Present Today",
-            value: "142",
+            value: presentToday.length,
             icon: UserCheck,
             color: "bg-green-500",
           },
@@ -293,16 +347,19 @@ function DashboardContent() {
             </button>
           </div>
           <div className="space-y-4">
-            {[
-              { name: "Sarah Wilson", time: "9:00 AM", status: "Checked In" },
-              { name: "Michael Chen", time: "9:05 AM", status: "Checked In" },
-              { name: "Emma Thompson", time: "9:15 AM", status: "Checked In" },
-              {
-                name: "James Rodriguez",
-                time: "9:30 AM",
-                status: "Checked In",
-              },
-            ].map((activity, index) => (
+            {
+            // [
+            //   { name: "Sarah Wilson", time: "9:00 AM", status: "Checked In" },
+            //   { name: "Michael Chen", time: "9:05 AM", status: "Checked In" },
+            //   { name: "Emma Thompson", time: "9:15 AM", status: "Checked In" },
+            //   {
+            //     name: "James Rodriguez",
+            //     time: "9:30 AM",
+            //     status: "Checked In",
+            //   },
+            // ]
+            
+            presentToday.map((activity, index) => (
               <div
                 key={index}
                 className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
@@ -531,14 +588,14 @@ function AttendanceContent({
   );
 }
 
-function EmployeesContent() {
+function StudentsContent() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Employees</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Students</h2>
         <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
           <UserPlus className="h-5 w-5" />
-          Add Employee
+          Add Student
         </button>
       </div>
 
