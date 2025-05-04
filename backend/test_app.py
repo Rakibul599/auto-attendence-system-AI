@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request  # Ensure jsonify is imported correctly
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 import cv2
@@ -7,7 +7,8 @@ import face_recognition
 import pickle
 import base64
 from datetime import datetime as dt
-from src.models import StudentModel, AttendanceModel
+import datetime as ds
+from src.models import Settings, StudentModel, AttendanceModel
 from src.settings import (
     DATASET_PATH,
     HAAR_CASCADE_PATH,
@@ -180,6 +181,111 @@ def dashboard():
     student_json = jsonify(all_info)
     # print(student_json)
     return student_json, 200
+
+# times log 
+@app.route('/time_logs', methods=['GET'])
+def time_logs():
+    students = StudentModel.find_all()
+    attendances = AttendanceModel.find_all()
+    setting = Settings.find_all()[0]
+
+    all_info = []
+
+    # Threshold time: start_time + late_count minutes
+    threshold_time = (ds.datetime.combine(ds.date.today(), setting.start_time) +
+                      ds.timedelta(minutes=setting.late_count)).time()
+
+    today = ds.date.today()
+
+    for student in students:
+        date_time = {
+            "dates": []
+        }
+        status = "--"  # Default
+
+        for attendance in attendances:
+            if student.id == attendance.student_id and attendance.date.date() == today:
+                attend_time = attendance.date.time()
+                if attend_time > threshold_time:
+                    status = "late"
+                else:
+                    status = "on time"
+                
+                date_time["dates"].append({
+                    "attendance_date": attendance.date.strftime("%Y-%m-%d"),
+                    "time": attendance.date.strftime("%H:%M:%p")
+                })
+                break  # No need to check more attendance records for today
+
+        # If the student has no attendance for today
+        if not date_time["dates"]:
+            date_time["dates"].append({
+                "attendance_date": "--",
+                "time": "--"
+            })
+
+        student_data = {
+            "id": student.id,
+            "name": student.name,
+            "date_time": date_time,
+            "status": status
+        }
+
+        all_info.append(student_data)
+
+    return jsonify(all_info), 200
+
+    # return jsonify({"error": "Missing 'id'"}), 200
+# settings
+@app.route('/settings', methods=['PUT'])
+def update_settings():
+    data = request.get_json()
+    setting_id = data.get("id")
+    start_time_str = data.get("start_time")
+    end_time_str = data.get("end_time")
+    late_count = data.get("late_count")
+
+    if not setting_id:
+        return jsonify({"error": "Missing 'id'"}), 400
+
+    try:
+        # Parse 12-hour format with AM/PM
+        start_time = dt.strptime(start_time_str, "%I:%M:%S %p").time()
+        end_time = dt.strptime(end_time_str, "%I:%M:%S %p").time()
+        late_count = int(late_count)
+    except ValueError as e:
+        return jsonify({"error": f"Invalid time format: {str(e)}"}), 400
+
+    # Convert to string in ISO format for SQLAlchemy
+    start_time_iso = start_time.strftime("%H:%M:%S")
+    end_time_iso = end_time.strftime("%H:%M:%S")
+
+    setting = Settings.update_settings(setting_id, start_time_iso, end_time_iso, late_count)
+    if setting:
+        return jsonify({"message": "Settings updated successfully"}), 200
+    else:
+        Settings.initialize_default_settings()
+        return jsonify({"error": "Setting not found"}), 404
+
+
+@app.route('/settings', methods=['GET'])
+def get_settings():
+    settings=Settings.find_by_id(1)
+    if settings:
+        start_time_iso = settings.start_time.strftime("%H:%M")
+        end_time_iso = settings.end_time.strftime("%H:%M")
+        late=settings.late_count
+        new_settings={
+            "start": start_time_iso,
+            "end": end_time_iso,
+            "late": late
+        }
+        print(new_settings)
+        return jsonify(new_settings), 200
+    else:
+        return jsonify({"error": "Setting not found"}), 404
+
+
 
 # ====== Start Server ======
 if __name__ == '__main__':

@@ -804,6 +804,29 @@ function StudentsContent() {
 }
 
 function TimeLogsContent() {
+  const [timeslogs,setTimeslogs]=useState<Array>([])
+  useEffect(()=>{
+    (async()=>{
+      try {
+        const response=await axios.get('http://localhost:5000/time_logs')
+        console.log(response.data)
+      const filtered = response.data
+      .filter(item => item.date_time.dates[0].attendance_date !== "--")
+      .map(item => ({
+        date: item.date_time.dates[0].attendance_date,
+        name: item.name,
+        checkin: item.date_time.dates[0].time,
+        status: item.status,
+        checkout:"--",
+        totalhours:"--"
+      }));
+      setTimeslogs(filtered)
+    console.log(filtered);
+      } catch (error) {
+        console.log(error)
+      }
+    })();
+  },[])
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -863,40 +886,42 @@ function TimeLogsContent() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {[
-                {
-                  date: "2025-03-20",
-                  name: "Sarah Wilson",
-                  checkIn: "9:00 AM",
-                  checkOut: "5:00 PM",
-                  hours: "8h 00m",
-                  status: "On Time",
-                },
-                {
-                  date: "2025-03-20",
-                  name: "Michael Chen",
-                  checkIn: "9:05 AM",
-                  checkOut: "5:15 PM",
-                  hours: "8h 10m",
-                  status: "On Time",
-                },
-                {
-                  date: "2025-03-20",
-                  name: "Emma Thompson",
-                  checkIn: "9:15 AM",
-                  checkOut: "5:30 PM",
-                  hours: "8h 15m",
-                  status: "Late",
-                },
-                {
-                  date: "2025-03-20",
-                  name: "James Rodriguez",
-                  checkIn: "9:30 AM",
-                  checkOut: "5:45 PM",
-                  hours: "8h 15m",
-                  status: "Late",
-                },
-              ].map((log, index) => (
+              {
+              // [
+              //   {
+              //     date: "2025-03-20",
+              //     name: "Sarah Wilson",
+              //     checkIn: "9:00 AM",
+              //     checkOut: "5:00 PM",
+              //     hours: "8h 00m",
+              //     status: "On Time",
+              //   },
+              //   {
+              //     date: "2025-03-20",
+              //     name: "Michael Chen",
+              //     checkIn: "9:05 AM",
+              //     checkOut: "5:15 PM",
+              //     hours: "8h 10m",
+              //     status: "On Time",
+              //   },
+              //   {
+              //     date: "2025-03-20",
+              //     name: "Emma Thompson",
+              //     checkIn: "9:15 AM",
+              //     checkOut: "5:30 PM",
+              //     hours: "8h 15m",
+              //     status: "Late",
+              //   },
+              //   {
+              //     date: "2025-03-20",
+              //     name: "James Rodriguez",
+              //     checkIn: "9:30 AM",
+              //     checkOut: "5:45 PM",
+              //     hours: "8h 15m",
+              //     status: "Late",
+              //   },
+              // ]
+              timeslogs.map((log, index) => (
                 <tr key={index}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {log.date}
@@ -914,13 +939,13 @@ function TimeLogsContent() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.checkIn}
+                    {log.checkin}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.checkOut}
+                    {log.checkout}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.hours}
+                    {log.totalhours}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
@@ -944,6 +969,50 @@ function TimeLogsContent() {
 }
 
 function SettingsContent() {
+const [starttime,setStartime]=useState<string>('')
+const [endtime,setEndtime]=useState<string>('')
+const [lateCount,setLetcount]=useState<number>()
+function convertTo12Hour(time24: string): string {
+  const [hourStr, minute] = time24.split(':');
+  let hour = parseInt(hourStr, 10);
+  const ampm = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12 || 12; // convert "0" to "12"
+  let second="00"
+  return `${hour}:${minute}:${second} ${ampm}`;
+}
+const handleSettings=async ()=>{
+  const str = convertTo12Hour(starttime);
+  const endt = convertTo12Hour(endtime);
+ 
+  const settings={
+    "id": 1,
+    "start_time": str,
+    "end_time": endt,
+    "late_count": lateCount
+  }
+  try {
+    const response=await axios.put("http://localhost:5000/settings",settings)
+    console.log(response)
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+useEffect(() => {
+  (async () => {
+    try {
+      let response = await axios.get("http://localhost:5000/settings");
+      let setting=response.data;
+      setStartime(setting.start);
+      setEndtime(setting.end);
+      setLetcount(setting.late)
+      console.log(response);
+      console.log(typeof starttime)
+    } catch (error) {
+      console.log(error);
+    }
+  })();
+}, []);
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
@@ -960,7 +1029,7 @@ function SettingsContent() {
         <div className="p-6 space-y-6">
           <div>
             <h4 className="text-sm font-medium text-gray-900 mb-4">
-              Working Hours
+              Class Hours
             </h4>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -969,8 +1038,9 @@ function SettingsContent() {
                 </label>
                 <input
                   type="time"
-                  defaultValue="09:00"
+                  defaultValue={starttime}
                   className="w-full border-gray-200 rounded-lg"
+                  onChange={(e)=> setStartime(e.target.value)}
                 />
               </div>
               <div>
@@ -979,8 +1049,9 @@ function SettingsContent() {
                 </label>
                 <input
                   type="time"
-                  defaultValue="17:00"
+                  defaultValue={endtime}
                   className="w-full border-gray-200 rounded-lg"
+                  onChange={(e)=> setEndtime(e.target.value)}
                 />
               </div>
             </div>
@@ -994,7 +1065,7 @@ function SettingsContent() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-700">
-                    Grace Period
+                  Threshold time
                   </p>
                   <p className="text-xs text-gray-500">
                     Allow late check-in up to specified minutes
@@ -1002,13 +1073,14 @@ function SettingsContent() {
                 </div>
                 <input
                   type="number"
-                  defaultValue="15"
+                  defaultValue={lateCount}
                   min="0"
                   max="60"
                   className="w-20 border-gray-200 rounded-lg"
+                  onChange={(e)=>setLetcount(parseInt(e.target.value))}
                 />
               </div>
-              <div className="flex items-center justify-between">
+              {/* <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-700">
                     Overtime Threshold
@@ -1023,7 +1095,7 @@ function SettingsContent() {
                   min="0"
                   className="w-20 border-gray-200 rounded-lg"
                 />
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -1097,7 +1169,7 @@ function SettingsContent() {
             <button className="px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
               Cancel
             </button>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">
+            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" onClick={handleSettings}>
               Save Changes
             </button>
           </div>
@@ -1108,3 +1180,5 @@ function SettingsContent() {
 }
 
 export default App;
+
+

@@ -1,8 +1,8 @@
 from typing import List
 from uuid import uuid4
-from datetime import date as dt, datetime as dtime
+from datetime import date as dt, datetime as dtime, time
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, TIMESTAMP, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, TIMESTAMP, ForeignKey, Time
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
@@ -133,6 +133,78 @@ class AttendanceModel(Base):
         Session.delete(self)
         Session.commit()
 
+
+
+class Settings(Base):
+    __tablename__ = "settings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    start_time = Column(Time, nullable=False)
+    end_time = Column(Time, nullable=False)
+    late_count = Column(Integer, nullable=False)
+
+    @classmethod
+    def find_by_id(cls, _id: int) -> "Settings":
+        return Session.query(cls).filter_by(id=_id).first()
+
+    @classmethod
+    def find_all(cls) -> List["Settings"]:
+        return Session.query(cls).all()
+
+    @classmethod
+    def get_current_settings(cls) -> "Settings":
+        """Get the first settings record (typically there's only one)"""
+        return cls.find_by_id(1)
+
+    @classmethod
+    def update_settings(cls, _id: int, start_time: str, end_time: str, late_count: int) -> "Settings":
+        setting = cls.find_by_id(_id)
+        if setting:
+            try:
+                # Parse time strings into time objects
+                if isinstance(start_time, str):
+                    start_time = dtime.strptime(start_time, "%H:%M:%S").time()
+                if isinstance(end_time, str):
+                    end_time = dtime.strptime(end_time, "%H:%M:%S").time()
+                
+                setting.start_time = start_time
+                setting.end_time = end_time
+                setting.late_count = int(late_count)
+                Session.commit()
+                return setting
+            except ValueError as e:
+                Session.rollback()
+                raise ValueError(f"Invalid time format: {str(e)}")
+        return None
+
+    @classmethod
+    def initialize_default_settings(cls):
+        """Create default settings if none exist"""
+        if not cls.get_current_settings():
+            default_settings = cls(
+                id=1,
+                start_time=dtime.strptime("09:00:00", "%H:%M:%S").time(),
+                end_time=dtime.strptime("17:00:00", "%H:%M:%S").time(),
+                late_count=15
+            )
+            default_settings.save_to_db()
+
+    def to_dict(self):
+        """Convert settings to dictionary with formatted times"""
+        return {
+            "id": self.id,
+            "start_time": self.start_time.strftime("%I:%M:%S %p"),
+            "end_time": self.end_time.strftime("%I:%M:%S %p"),
+            "late_count": self.late_count
+        }
+
+    def save_to_db(self) -> None:
+        Session.add(self)
+        Session.commit()
+
+    def delete_from_db(self) -> None:
+        Session.delete(self)
+        Session.commit()
 
 class VideoFeedModel(Base):
     __tablename__ = "video_feeds"
