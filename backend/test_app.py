@@ -181,7 +181,20 @@ def dashboard():
     student_json = jsonify(all_info)
     # print(student_json)
     return student_json, 200
-
+# profile
+@app.route('/profiles',methods=['GET'])
+def profile():
+    students = StudentModel.find_all()
+    profiles=[]
+    for std in students:
+        student={
+            'id':std.id,
+            'name':std.name,
+            'description':"Computer science and Engineering",
+            'department':"CSE"
+        }
+        profiles.append(student)
+    return jsonify(profiles),200
 # times log 
 @app.route('/time_logs', methods=['GET'])
 def time_logs():

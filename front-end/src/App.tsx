@@ -2,7 +2,9 @@ import React, { useState, useRef, useEffect } from "react";
 import io from "socket.io-client";
 import jsPDF from 'jspdf';
 import 'jspdf-autotable'; 
-
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import user from './avatar/user.png'
 // const socket = io("http://localhost:5000"); // Adjust if needed
 const socket = io("http://localhost:5000", {
   transports: ["websocket"],
@@ -732,6 +734,18 @@ function AttendanceContent({
 }
 
 function StudentsContent() {
+  const [profile, setProfile] = useState<Array<any>>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const response = await axios.get('http://localhost:5000/profiles');
+        setProfile(response.data);
+        console.log(response.data);
+      } catch (error) {
+        console.log(error);
+      }
+    })();
+  }, []);
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -743,49 +757,51 @@ function StudentsContent() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[
-          {
-            name: "Sarah Wilson",
-            role: "Senior Engineer",
-            department: "Engineering",
-            image:
-              "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-          },
-          {
-            name: "Michael Chen",
-            role: "UI Designer",
-            department: "Design",
-            image:
-              "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-          },
-          {
-            name: "Emma Thompson",
-            role: "Marketing Manager",
-            department: "Marketing",
-            image:
-              "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-          },
-          {
-            name: "James Rodriguez",
-            role: "Sales Executive",
-            department: "Sales",
-            image:
-              "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-          },
-        ].map((employee, index) => (
+        {
+        // [
+        //   {
+        //     name: "Sarah Wilson",
+        //     role: "Senior Engineer",
+        //     department: "Engineering",
+        //     image:
+        //       "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+        //   },
+        //   {
+        //     name: "Michael Chen",
+        //     role: "UI Designer",
+        //     department: "Design",
+        //     image:
+        //       "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+        //   },
+        //   {
+        //     name: "Emma Thompson",
+        //     role: "Marketing Manager",
+        //     department: "Marketing",
+        //     image:
+        //       "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+        //   },
+        //   {
+        //     name: "James Rodriguez",
+        //     role: "Sales Executive",
+        //     department: "Sales",
+        //     image:
+        //       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+        //   },
+        // ]
+        profile.map((profiles, index) => (
           <div key={index} className="bg-white rounded-xl shadow-sm p-6">
             <div className="flex items-center gap-4">
               <img
-                src={employee.image}
-                alt={employee.name}
+                src={user}
+                alt={profiles.name}
                 className="h-16 w-16 rounded-full object-cover"
               />
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">
-                  {employee.name}
+                  {profiles.name}
                 </h3>
-                <p className="text-sm text-gray-500">{employee.role}</p>
-                <p className="text-sm text-gray-500">{employee.department}</p>
+                <p className="text-sm text-gray-500">{profiles.description}</p>
+                <p className="text-sm text-gray-500">{profiles.department}</p>
               </div>
             </div>
             <div className="mt-4 flex gap-2">
@@ -805,6 +821,8 @@ function StudentsContent() {
 
 function TimeLogsContent() {
   const [timeslogs,setTimeslogs]=useState<Array>([])
+
+
   useEffect(()=>{
     (async()=>{
       try {
@@ -827,6 +845,58 @@ function TimeLogsContent() {
       }
     })();
   },[])
+
+    // genarate pdf
+    const generatePDF = () => {
+      console.log("hello")
+      const doc = new jsPDF();
+      doc.setFontSize(18);
+      doc.text('Student Times Log Report', 14, 22);
+      doc.setFontSize(11);
+  
+      const headers = [['DATE','STUDENT', 'CHECK IN', 'CHECK OUT','TOTAL HOURS','STATUS']];
+  
+      const rows = timeslogs.map(std => [
+        std.date,
+        std.name,
+        std.checkin,
+        std.checkout,
+        std.totalhours,
+        std.status
+      ]);
+  
+      doc.autoTable({
+        startY: 30,
+        head: headers,
+        body: rows,
+        theme: 'striped',
+        headStyles: {
+          fillColor: [240, 240, 240],
+          textColor: [80, 80, 80],
+          fontStyle: 'bold',
+        },
+        bodyStyles: {
+          valign: 'middle',
+        },
+        styles: {
+          cellPadding: 4,
+          fontSize: 10,
+          overflow: 'linebreak',
+        },
+        didParseCell: function (data) {
+          if (data.column.index === 4 && data.cell.text[0] === 'on time') {
+            data.cell.styles.fillColor = [212, 237, 218]; // light green
+            data.cell.styles.textColor = [40, 167, 69];    // green
+          }
+          else if(data.column.index === 4 && data.cell.text[0] === 'late'){
+            data.cell.styles.fillColor = [248, 215, 218]; // light red
+            data.cell.styles.textColor = [220, 53, 69];   // red
+          }
+        }
+      });
+  
+      doc.save('students-times_log.pdf');
+    };
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -836,7 +906,7 @@ function TimeLogsContent() {
             <Filter className="h-5 w-5" />
             Filter
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
+          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50" onClick={generatePDF}>
             <Download className="h-5 w-5" />
             Export
           </button>
@@ -869,7 +939,7 @@ function TimeLogsContent() {
                   Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Employee
+                  STUDENT
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Check In
@@ -950,7 +1020,7 @@ function TimeLogsContent() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`px-3 py-1 text-xs font-medium rounded-full ${
-                        log.status === "On Time"
+                        log.status === "on time"
                           ? "text-green-700 bg-green-50"
                           : "text-orange-700 bg-orange-50"
                       }`}
@@ -972,6 +1042,11 @@ function SettingsContent() {
 const [starttime,setStartime]=useState<string>('')
 const [endtime,setEndtime]=useState<string>('')
 const [lateCount,setLetcount]=useState<number>()
+const showToastMessage = () => {
+  toast.success("Setting Updated !", {
+    position: "top-right"
+  });
+};
 function convertTo12Hour(time24: string): string {
   const [hourStr, minute] = time24.split(':');
   let hour = parseInt(hourStr, 10);
@@ -993,6 +1068,8 @@ const handleSettings=async ()=>{
   try {
     const response=await axios.put("http://localhost:5000/settings",settings)
     console.log(response)
+    showToastMessage();
+    // alert("success")
   } catch (error) {
     console.log(error)
   }
@@ -1015,6 +1092,7 @@ useEffect(() => {
 }, []);
   return (
     <div className="space-y-6">
+      <ToastContainer />
       <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
 
       <div className="bg-white rounded-xl shadow-sm">
