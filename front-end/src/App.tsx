@@ -5,10 +5,12 @@ import 'jspdf-autotable';
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import user from './avatar/user.png'
+import { useNavigate } from 'react-router-dom';
 // const socket = io("http://localhost:5000"); // Adjust if needed
 const socket = io("http://localhost:5000", {
   transports: ["websocket"],
 });
+
 import {
   Calendar,
   Clock,
@@ -35,7 +37,7 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalId = useRef<NodeJS.Timeout | null>(null);
   const [processedImage, setProcessedImage] = useState("");
-
+  
   // if(activeTab=="attendance") console.log("hello")
   const startCamera = async () => {
     try {
@@ -115,12 +117,12 @@ function App() {
             activeTab={activeTab}
           />
         );
-      case "employees":
-        return <StudentsContent />;
+      case "students":
+        return <StudentsContent activeTab={activeTab} />;
       case "logs":
-        return <TimeLogsContent />;
+        return <TimeLogsContent activeTab={activeTab} />;
       case "settings":
-        return <SettingsContent />;
+        return <SettingsContent activeTab={activeTab} />;
       default:
         return <DashboardContent activeTab={activeTab} />;
     }
@@ -139,7 +141,7 @@ function App() {
           {[
             { name: "Dashboard", icon: BarChart3, id: "dashboard" },
             { name: "Attendance", icon: Calendar, id: "attendance" },
-            { name: "Students", icon: Users, id: "employees" },
+            { name: "Students", icon: Users, id: "students" },
             { name: "Time Logs", icon: Clock, id: "logs" },
             { name: "Settings", icon: Settings, id: "settings" },
           ].map((item) => (
@@ -147,7 +149,7 @@ function App() {
               key={item.id}
               onClick={() => {
                 setActiveTab(item.id);
-                handleSidebar(item.id);
+              
               }}
               className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === item.id
@@ -297,9 +299,10 @@ function DashboardContent({ activeTab }: { activeTab: string }) {
   const [dashboarddata, setDashboarddata] = useState<any>(null);
   const [totalstudent, setTotalstudent] = useState<number>(0);
   const [presentToday, setPresentToday] = useState<Array>([]);
-
+  const navigate = useNavigate();
   useEffect(() => {
     if (activeTab === "dashboard") {
+      navigate(`/attendance-system/dashboard`)
       const fetchData = async () => {
         try {
           const response = await axios.get("http://localhost:5000/dashboard");
@@ -480,9 +483,10 @@ function AttendanceContent({
   console.log(activeTab);
 
   const [presentToday, setPresentToday] = useState<Array>([]);
-
+  const navigate = useNavigate();
   useEffect(() => {
     if (activeTab === "attendance") {
+      navigate(`/attendance-system/attendance`)
       const fetchData = async () => {
         try {
           const response = await axios.get("http://localhost:5000/dashboard");
@@ -733,9 +737,11 @@ function AttendanceContent({
   );
 }
 
-function StudentsContent() {
+function StudentsContent({ activeTab }: { activeTab: string }) {
   const [profile, setProfile] = useState<Array<any>>([]);
+  const navigate = useNavigate();
   useEffect(() => {
+    if(activeTab=="students") navigate(`/attendance-system/students`);
     (async () => {
       try {
         const response = await axios.get('http://localhost:5000/profiles');
@@ -819,11 +825,12 @@ function StudentsContent() {
   );
 }
 
-function TimeLogsContent() {
+function TimeLogsContent({ activeTab }: { activeTab: string }) {
   const [timeslogs,setTimeslogs]=useState<Array>([])
-
+  const navigate = useNavigate();
 
   useEffect(()=>{
+    if(activeTab=="logs") navigate(`/attendance-system/logs`);
     (async()=>{
       try {
         const response=await axios.get('http://localhost:5000/time_logs')
@@ -1038,10 +1045,11 @@ function TimeLogsContent() {
   );
 }
 
-function SettingsContent() {
+function SettingsContent({ activeTab }: { activeTab: string }) {
 const [starttime,setStartime]=useState<string>('')
 const [endtime,setEndtime]=useState<string>('')
 const [lateCount,setLetcount]=useState<number>()
+const navigate = useNavigate();
 const showToastMessage = () => {
   toast.success("Setting Updated !", {
     position: "top-right"
@@ -1076,6 +1084,7 @@ const handleSettings=async ()=>{
 }
 
 useEffect(() => {
+  if(activeTab=="settings") navigate(`/attendance-system/settings`);
   (async () => {
     try {
       let response = await axios.get("http://localhost:5000/settings");
