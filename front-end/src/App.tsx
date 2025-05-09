@@ -491,10 +491,10 @@ function AttendanceContent({
         try {
           const response = await axios.get("http://localhost:5000/dashboard");
           const data = response.data;
-  
+          console.log(data)
   
           const today = new Date().toISOString().split("T")[0];
-  
+          console.log(today)
           const presentStudents = data.filter((student: any) =>
             student.date_time?.dates?.some(
               (entry: any) => entry.attendance_date === today

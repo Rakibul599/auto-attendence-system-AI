@@ -8,7 +8,7 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql import func
 
 
-from src.db import Session
+from src.db import Session, engine
 
 
 Base = declarative_base()
@@ -17,13 +17,15 @@ Base = declarative_base()
 class TeacherModel(Base):
     __tablename__ = "teachers"
 
-    id = Column(Integer, primary_key=True)
-    username = Column(String(80), nullable=False, unique=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(100), nullable=False)
+    email = Column(String(120), nullable=False, unique=True)
     password = Column(String(80), nullable=False)
+    role = Column(String(20), default="user")  # Can be "user" or "admin"
 
     @classmethod
-    def find_by_username(cls, username: str) -> "TeacherModel":
-        return Session.query(cls).filter_by(username=username).first()
+    def find_by_email(cls, email: str) -> "TeacherModel":
+        return Session.query(cls).filter_by(email=email).first()
 
     @classmethod
     def find_by_id(cls, _id: int) -> "TeacherModel":
@@ -36,6 +38,7 @@ class TeacherModel(Base):
     def delete_from_db(self) -> None:
         Session.delete(self)
         Session.commit()
+
 
 
 class StudentModel(Base):
@@ -232,3 +235,6 @@ class VideoFeedModel(Base):
     def delete_from_db(self) -> None:
         Session.delete(self)
         Session.commit()
+
+Base.metadata.create_all(engine)
+Settings.initialize_default_settings()
