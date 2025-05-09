@@ -21,6 +21,7 @@ dependencies:
   - flask-cors
   - flask-restful
   - flask-jwt-extended
+  - Flask PyJWT
   - sqlalchemy
   - marshmallow
   - marshmallow-sqlalchemy

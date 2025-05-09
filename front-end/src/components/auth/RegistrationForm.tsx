@@ -113,19 +113,21 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess })
     if (!validate()) return;
     
     setIsLoading(true);
+    console.log(formData)
+    // signup handle
     
-    // Simulate API call
-    try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Registration form submitted:', formData);
-      onSuccess?.();
-      // Success handling would go here
-    } catch (error) {
-      console.error('Registration error:', error);
-      // Error handling would go here
-    } finally {
-      setIsLoading(false);
-    }
+
+    // try {
+    //   await new Promise(resolve => setTimeout(resolve, 1500));
+    //   console.log('Registration form submitted:', formData);
+    //   onSuccess?.();
+    //   // Success handling would go here
+    // } catch (error) {
+    //   console.error('Registration error:', error);
+    //   // Error handling would go here
+    // } finally {
+    //   setIsLoading(false);
+    // }
   };
 
   return (

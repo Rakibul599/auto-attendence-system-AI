@@ -7,7 +7,7 @@ import "react-toastify/dist/ReactToastify.css";
 import user from './avatar/user.png'
 import { useNavigate } from 'react-router-dom';
 // const socket = io("http://localhost:5000"); // Adjust if needed
-const socket = io("http://localhost:5000", {
+const socket = io(import.meta.env.VITE_API, {
   transports: ["websocket"],
 });
 
@@ -305,7 +305,9 @@ function DashboardContent({ activeTab }: { activeTab: string }) {
       navigate(`/attendance-system/dashboard`)
       const fetchData = async () => {
         try {
-          const response = await axios.get("http://localhost:5000/dashboard");
+          // const response = await axios.get("http://localhost:5000/dashboard");
+         
+          const response = await axios.get(`${import.meta.env.VITE_API}/dashboard`);
           const data = response.data;
 
           setDashboarddata(data);
@@ -489,7 +491,7 @@ function AttendanceContent({
       navigate(`/attendance-system/attendance`)
       const fetchData = async () => {
         try {
-          const response = await axios.get("http://localhost:5000/dashboard");
+          const response = await axios.get(`${import.meta.env.VITE_API}/dashboard`);
           const data = response.data;
           console.log(data)
   
@@ -744,7 +746,7 @@ function StudentsContent({ activeTab }: { activeTab: string }) {
     if(activeTab=="students") navigate(`/attendance-system/students`);
     (async () => {
       try {
-        const response = await axios.get('http://localhost:5000/profiles');
+        const response = await axios.get(`${import.meta.env.VITE_API}/profiles`);
         setProfile(response.data);
         console.log(response.data);
       } catch (error) {
@@ -833,7 +835,7 @@ function TimeLogsContent({ activeTab }: { activeTab: string }) {
     if(activeTab=="logs") navigate(`/attendance-system/logs`);
     (async()=>{
       try {
-        const response=await axios.get('http://localhost:5000/time_logs')
+        const response=await axios.get(`${import.meta.env.VITE_API}/time_logs`)
         console.log(response.data)
       const filtered = response.data
       .filter(item => item.date_time.dates[0].attendance_date !== "--")
@@ -1074,7 +1076,7 @@ const handleSettings=async ()=>{
     "late_count": lateCount
   }
   try {
-    const response=await axios.put("http://localhost:5000/settings",settings)
+    const response=await axios.put(`${import.meta.env.VITE_API}/settings",settings`)
     console.log(response)
     showToastMessage();
     // alert("success")
@@ -1087,7 +1089,7 @@ useEffect(() => {
   if(activeTab=="settings") navigate(`/attendance-system/settings`);
   (async () => {
     try {
-      let response = await axios.get("http://localhost:5000/settings");
+      let response = await axios.get(`${import.meta.env.VITE_API}/settings`);
       let setting=response.data;
       setStartime(setting.start);
       setEndtime(setting.end);
