@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Eye, EyeOff, User, Mail, KeyRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 interface RegistrationFormProps {
   onSuccess?: () => void;
@@ -22,7 +24,7 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess })
     password: '',
     agreeToTerms: ''
   });
-
+  const navigate = useNavigate();
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -113,9 +115,22 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess })
     if (!validate()) return;
     
     setIsLoading(true);
-    console.log(formData)
+    // console.log(formData)
     // signup handle
-    
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_API}/signup`,formData);
+      
+      if(response.data.msg=='success')
+      {
+        alert("account created")
+        // navigate(`/`)
+        window.location.href = '/';
+      }
+    } catch (error) {
+      console.log(error)
+    }finally {
+      setIsLoading(false);
+    }
 
     // try {
     //   await new Promise(resolve => setTimeout(resolve, 1500));

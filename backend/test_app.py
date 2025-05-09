@@ -1,14 +1,19 @@
-from flask import Flask, jsonify, request  # Ensure jsonify is imported correctly
+from functools import wraps
+import os
+from flask import Flask, jsonify, request, make_response  # Ensure jsonify is imported correctly
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit
 import cv2
+import jwt
 import numpy as np
 import face_recognition
 import pickle
 import base64
 from datetime import datetime as dt
 import datetime as ds
-from src.models import Settings, StudentModel, AttendanceModel
+from src.models import Settings, StudentModel, AttendanceModel, TeacherModel
+from werkzeug.security import generate_password_hash, check_password_hash
+from dotenv import load_dotenv
 from src.settings import (
     DATASET_PATH,
     HAAR_CASCADE_PATH,
@@ -16,10 +21,11 @@ from src.settings import (
     DLIB_TOLERANCE,
     ENCODINGS_FILE
 )
-
+load_dotenv()
+SERVER_PORT = int(os.getenv("SERVER_PORT", 5000))
 # ====== Flask App Setup ======
 app = Flask(__name__)
-CORS(app)
+CORS(app,supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ====== Load Known Encodings from Pickle File ======
@@ -153,8 +159,34 @@ class VideoAttendanceRecognizer:
 # app = Flask(__name__)
 # CORS(app)  # This will allow all domains (development only)
 # another route
+# Middleware: Verify JWT
+cookie_name=app.config.get("COOKIE_NAME", "attendance-system")
+secret_key = app.config.get("JWT_SECRET_KEY", "sss")
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        print("deco---cookie")
+        token = request.cookies.get(cookie_name)
+        print(token)
+        if not token:
+            return jsonify({"msg": "Unauthorized"}), 401
+
+        try:
+            data = jwt.decode(token, secret_key, algorithms=["HS256"])
+            request.user = data['user']
+            request.email=data['email']
+        except jwt.ExpiredSignatureError:
+            return jsonify({"msg": "Token_expired"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"msg": "Invalid_token"}), 401
+
+        return f(*args, **kwargs)
+    return decorated
+
 @app.route('/dashboard',methods=['GET'])
+@token_required
 def dashboard():
+
     students=StudentModel.find_all()
     attendances = AttendanceModel.find_all()
     all_info = []
@@ -297,10 +329,66 @@ def get_settings():
         return jsonify(new_settings), 200
     else:
         return jsonify({"error": "Setting not found"}), 404
+# //signup route
+@app.route('/signup',methods=['POST'])
+def post_signup():
+    data = request.get_json()
+    agreeToTerms=data.get("agreeToTerms")
+    email=data.get("email").strip()
+    name=data.get("name").strip()
+    password=data.get('password').strip()
+    hash_pass=generate_password_hash(password);
+    teacher=TeacherModel.find_by_email(email)
+    if teacher:
+        return jsonify({"msg": "Email already exists"}), 409
+    else:
+        teachers=TeacherModel(name,email,hash_pass)
+        teachers.save_to_db()
+        return jsonify({"msg":"success"}), 200
 
 
-
+# sign In route
+@app.route('/stay_signin',methods=['GET'])
+@token_required
+def stay_signin():
+    print(request.user)
+    return jsonify({"msg": "success","name":request.user,"email":request.email}), 200
+    
+@app.route('/signin',methods=['POST'])
+def get_signin():
+    data = request.get_json()
+    email=data.get("email").strip()
+    password=data.get('password').strip()
+    teacher=TeacherModel.find_by_email(email)
+    
+    if teacher:
+        if check_password_hash(teacher.password,password):
+            secret_key = app.config.get("JWT_SECRET_KEY", "sss")
+            
+            print("password true")
+            token = jwt.encode({
+                'user': teacher.name,
+                'email':teacher.email,
+                'exp': ds.datetime.utcnow() + ds.timedelta(hours=1)
+            },secret_key, algorithm="HS256")
+            print(token)
+            resp = make_response(jsonify({"msg": "success","token":token}))
+            # set cookie
+            # resp.set_cookie(cookie_name, token)
+            resp.set_cookie(
+                cookie_name,
+                token,
+                httponly=True,
+                secure=False,          # True if running HTTPS
+                samesite='Lax'         # or 'None' if frontend is on a different domain and using HTTPS
+            )
+            print("set the cookie")
+            return resp, 200
+        else:
+            return jsonify({"msg": "unauthorized"}), 401
+    else:
+        return jsonify({"msg":"user no find"}), 409
 # ====== Start Server ======
 if __name__ == '__main__':
     print("[INFO] Starting Flask-SocketIO server...")
-    socketio.run(app, host='0.0.0.0', port=5000)
+    socketio.run(app, host='0.0.0.0', port=SERVER_PORT)

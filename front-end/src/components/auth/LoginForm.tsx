@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
 import { Eye, EyeOff, Mail, KeyRound } from 'lucide-react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 export const LoginForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,7 +17,7 @@ export const LoginForm: React.FC = () => {
     email: '',
     password: ''
   });
-
+  const navigate = useNavigate();
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -52,7 +54,25 @@ export const LoginForm: React.FC = () => {
     setErrors(newErrors);
     return valid;
   };
-
+  useEffect(()=>{
+    (async ()=>{
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API}/stay_signin`, {
+          withCredentials: true,
+        });
+        console.log(response.data.msg)
+        if(response.data.msg ==="success")
+        {
+          navigate('/attendance-system/dashboard');
+        }
+        else{
+          navigate('/');
+        }
+      } catch (error) {
+        console.log(error)
+      }
+    })();
+  },[])
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -62,15 +82,30 @@ export const LoginForm: React.FC = () => {
     
     // Simulate API call
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      console.log('Login form submitted:', formData);
-      // Success handling would go here
+      const response=await axios.post(`${import.meta.env.VITE_API}/signin`,formData,{
+        withCredentials: true,
+      })
+      if(response.data.msg==='success')
+      {
+        navigate('/attendance-system/dashboard')
+      }
+      else{
+        alert("Login Failed")
+      }
     } catch (error) {
-      console.error('Login error:', error);
-      // Error handling would go here
-    } finally {
-      setIsLoading(false);
+      console.log(error)
     }
+
+    // try {
+    //   await new Promise(resolve => setTimeout(resolve, 1500));
+    //   console.log('Login form submitted:', formData);
+    //   // Success handling would go here
+    // } catch (error) {
+    //   console.error('Login error:', error);
+    //   // Error handling would go here
+    // } finally {
+    //   setIsLoading(false);
+    // }
   };
 
   return (

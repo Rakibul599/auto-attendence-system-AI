@@ -22,6 +22,8 @@ dependencies:
   - flask-restful
   - flask-jwt-extended
   - Flask PyJWT
+  - python-dotenv
+  - werkzeug
   - sqlalchemy
   - marshmallow
   - marshmallow-sqlalchemy

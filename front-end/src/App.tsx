@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
 import io from "socket.io-client";
-import jsPDF from 'jspdf';
-import 'jspdf-autotable'; 
+import jsPDF from "jspdf";
+import "jspdf-autotable";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import user from './avatar/user.png'
-import { useNavigate } from 'react-router-dom';
+import user from "./avatar/user.png";
+import { useNavigate } from "react-router-dom";
 // const socket = io("http://localhost:5000"); // Adjust if needed
 const socket = io(import.meta.env.VITE_API, {
   transports: ["websocket"],
@@ -37,7 +37,11 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const intervalId = useRef<NodeJS.Timeout | null>(null);
   const [processedImage, setProcessedImage] = useState("");
-  
+  const [showSignOutPopup, setShowSignOutPopup] = useState(false);
+  const [logInfo, setLogInfo] = useState({
+    user: null,
+    email: null,
+  });
   // if(activeTab=="attendance") console.log("hello")
   const startCamera = async () => {
     try {
@@ -127,7 +131,25 @@ function App() {
         return <DashboardContent activeTab={activeTab} />;
     }
   };
+  useEffect(()=>{
+    (async ()=>{
+      try {
+        const response = await axios.get(`${import.meta.env.VITE_API}/stay_signin`, {
+          withCredentials: true
+        })
+        console.log(response.data.msg)
+        console.log(response.data.email)
+        if(response.data.msg ==="success")
+        {
+          setLogInfo({"user":response.data.name,"email":response.data.email})
+          console.log(logInfo);
+        }
 
+      } catch (error) {
+        console.log(error)
+      }
+    })();
+  },[])
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
@@ -149,7 +171,6 @@ function App() {
               key={item.id}
               onClick={() => {
                 setActiveTab(item.id);
-              
               }}
               className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 activeTab === item.id
@@ -195,12 +216,36 @@ function App() {
               <Bell className="h-6 w-6" />
               <span className="absolute top-0 right-0 h-2 w-2 bg-red-500 rounded-full"></span>
             </button>
+
             <img
               src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
               alt="Profile"
               className="h-10 w-10 rounded-full border-2 border-white shadow-sm"
+              onClick={() => setShowSignOutPopup((prev) => !prev)}
             />
           </div>
+
+          {showSignOutPopup && (
+  <div className="absolute right-0 top-16 bg-white shadow-lg rounded-lg w-48 z-50 border">
+    <div className="flex flex-col items-center justify-center py-4">
+      <img
+        src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e"
+        alt="Profile"
+        className="h-10 w-10 rounded-full border-2 border-white shadow-sm"
+      />
+      <h1 className="text-center mt-2">{logInfo.user}</h1>
+    </div>
+    
+    <div className="flex">
+      <button className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700">
+        Sign Out
+      </button>
+      <button className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700" onClick={() => setShowSignOutPopup((prev) => !prev)}>
+        Cancel
+      </button>
+    </div>
+  </div>
+)}
         </header>
 
         {/* Camera Modal */}
@@ -248,7 +293,7 @@ function App() {
                   </div>
                 )}
               </div> } */}
-            {/* new code  */}
+              {/* new code  */}
               <div className="flex justify-center gap-4">
                 <div className="w-[400px] h-[300px] border border-indigo-500 rounded-lg overflow-hidden">
                   <video
@@ -302,12 +347,17 @@ function DashboardContent({ activeTab }: { activeTab: string }) {
   const navigate = useNavigate();
   useEffect(() => {
     if (activeTab === "dashboard") {
-      navigate(`/attendance-system/dashboard`)
+      navigate(`/attendance-system/dashboard`);
       const fetchData = async () => {
         try {
           // const response = await axios.get("http://localhost:5000/dashboard");
-         
-          const response = await axios.get(`${import.meta.env.VITE_API}/dashboard`);
+
+          const response = await axios.get(
+            `${import.meta.env.VITE_API}/dashboard`,
+            {
+              withCredentials: true,
+            }
+          );
           const data = response.data;
 
           setDashboarddata(data);
@@ -475,117 +525,127 @@ function DashboardContent({ activeTab }: { activeTab: string }) {
 function AttendanceContent({
   selectedDate,
   setSelectedDate,
-  activeTab
+  activeTab,
 }: {
   selectedDate: Date;
   setSelectedDate: (date: Date) => void;
   activeTab: string;
 }) {
-
   console.log(activeTab);
 
   const [presentToday, setPresentToday] = useState<Array>([]);
   const navigate = useNavigate();
   useEffect(() => {
     if (activeTab === "attendance") {
-      navigate(`/attendance-system/attendance`)
+      navigate(`/attendance-system/attendance`);
       const fetchData = async () => {
         try {
-          const response = await axios.get(`${import.meta.env.VITE_API}/dashboard`);
+          const response = await axios.get(
+            `${import.meta.env.VITE_API}/dashboard`,
+            {
+              withCredentials: true,
+            }
+          );
           const data = response.data;
-          console.log(data)
-  
+          console.log(data);
+
           const today = new Date().toISOString().split("T")[0];
-          console.log(today)
-          const presentStudents = data.filter((student: any) =>
-            student.date_time?.dates?.some(
-              (entry: any) => entry.attendance_date === today
+          console.log(today);
+          const presentStudents = data
+            .filter((student: any) =>
+              student.date_time?.dates?.some(
+                (entry: any) => entry.attendance_date === today
+              )
             )
-          ).map((student: any) => ({
-            id: student.id,
-            name: student.name,
-            department:"CSE",
-            checkin: student.date_time.dates[student.date_time.dates.length - 1].time,
-            checkout:"--",
-            status: "Present",
-          }));
-  
-          const presentIds = new Set(presentStudents.map((s: any) => s.id));
-  
-          const absentStudents = data.filter((student: any) => !presentIds.has(student.id))
             .map((student: any) => ({
               id: student.id,
               name: student.name,
-              department:"CSE",
+              department: "CSE",
+              checkin:
+                student.date_time.dates[student.date_time.dates.length - 1]
+                  .time,
+              checkout: "--",
+              status: "Present",
+            }));
+
+          const presentIds = new Set(presentStudents.map((s: any) => s.id));
+
+          const absentStudents = data
+            .filter((student: any) => !presentIds.has(student.id))
+            .map((student: any) => ({
+              id: student.id,
+              name: student.name,
+              department: "CSE",
               checkin: "--",
-              checkout:"--",
+              checkout: "--",
               status: "Absent",
             }));
-  
+
           const finalAttendance = [...presentStudents, ...absentStudents];
-  
+
           setPresentToday(finalAttendance);
           console.log("Today's Attendance:", finalAttendance);
         } catch (error) {
           console.error(error);
         }
       };
-  
+
       fetchData();
     }
   }, [activeTab]);
 
   // genarate pdf
   const generatePDF = () => {
-    console.log("hello")
+    console.log("hello");
     const doc = new jsPDF();
     doc.setFontSize(18);
-    doc.text('Student Attendance Report', 14, 22);
+    doc.text("Student Attendance Report", 14, 22);
     doc.setFontSize(11);
 
-    const headers = [['STUDENT', 'DEPARTMENT', 'CHECK IN', 'CHECK OUT', 'STATUS']];
+    const headers = [
+      ["STUDENT", "DEPARTMENT", "CHECK IN", "CHECK OUT", "STATUS"],
+    ];
 
-    const rows = presentToday.map(std => [
+    const rows = presentToday.map((std) => [
       std.name,
       std.department,
       std.checkin,
       std.checkout,
-      std.status
+      std.status,
     ]);
 
     doc.autoTable({
       startY: 30,
       head: headers,
       body: rows,
-      theme: 'striped',
+      theme: "striped",
       headStyles: {
         fillColor: [240, 240, 240],
         textColor: [80, 80, 80],
-        fontStyle: 'bold',
+        fontStyle: "bold",
       },
       bodyStyles: {
-        valign: 'middle',
+        valign: "middle",
       },
       styles: {
         cellPadding: 4,
         fontSize: 10,
-        overflow: 'linebreak',
+        overflow: "linebreak",
       },
       didParseCell: function (data) {
-        if (data.column.index === 4 && data.cell.text[0] === 'Present') {
+        if (data.column.index === 4 && data.cell.text[0] === "Present") {
           data.cell.styles.fillColor = [212, 237, 218]; // light green
-          data.cell.styles.textColor = [40, 167, 69];    // green
-        }
-        else if(data.column.index === 4 && data.cell.text[0] === 'Absent'){
+          data.cell.styles.textColor = [40, 167, 69]; // green
+        } else if (data.column.index === 4 && data.cell.text[0] === "Absent") {
           data.cell.styles.fillColor = [248, 215, 218]; // light red
-          data.cell.styles.textColor = [220, 53, 69];   // red
+          data.cell.styles.textColor = [220, 53, 69]; // red
         }
-      }
+      },
     });
 
-    doc.save('students-attendance.pdf');
+    doc.save("students-attendance.pdf");
   };
-  
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -626,7 +686,10 @@ function AttendanceContent({
             <Filter className="h-5 w-5" />
             Filter
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50" onClick={generatePDF}>
+          <button
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+            onClick={generatePDF}
+          >
             <Download className="h-5 w-5" />
             Export
           </button>
@@ -660,77 +723,84 @@ function AttendanceContent({
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {
-              // [
-              //   {
-              //     name: "Sarah Wilson",
-              //     department: "CSE",
-              //     checkIn: "9:00 AM",
-              //     checkOut: "5:00 PM",
-              //     status: "Present",
-              //   },
-              //   {
-              //     name: "Michael Chen",
-              //     department: "CSE",
-              //     checkIn: "9:05 AM",
-              //     checkOut: "5:15 PM",
-              //     status: "Present",
-              //   },
-              //   {
-              //     name: "Emma Thompson",
-              //     department: "CSE",
-              //     checkIn: "9:15 AM",
-              //     checkOut: "5:30 PM",
-              //     status: "Present",
-              //   },
-              //   {
-              //     name: "James Rodriguez",
-              //     department: "CSE",
-              //     checkIn: "9:30 AM",
-              //     checkOut: "5:45 PM",
-              //     status: "Present",
-              //   },
-              // ]
-              presentToday.map((student, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
-                        {student.name.charAt(0)}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {student.name}
+                // [
+                //   {
+                //     name: "Sarah Wilson",
+                //     department: "CSE",
+                //     checkIn: "9:00 AM",
+                //     checkOut: "5:00 PM",
+                //     status: "Present",
+                //   },
+                //   {
+                //     name: "Michael Chen",
+                //     department: "CSE",
+                //     checkIn: "9:05 AM",
+                //     checkOut: "5:15 PM",
+                //     status: "Present",
+                //   },
+                //   {
+                //     name: "Emma Thompson",
+                //     department: "CSE",
+                //     checkIn: "9:15 AM",
+                //     checkOut: "5:30 PM",
+                //     status: "Present",
+                //   },
+                //   {
+                //     name: "James Rodriguez",
+                //     department: "CSE",
+                //     checkIn: "9:30 AM",
+                //     checkOut: "5:45 PM",
+                //     status: "Present",
+                //   },
+                // ]
+                presentToday.map((student, index) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 rounded-full bg-gray-100 flex items-center justify-center">
+                          {student.name.charAt(0)}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {student.name}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {student.department}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {student.checkin}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {student.checkout}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-3 py-1 text-xs font-medium ${student.status=="Present" ? "text-green-700": "text-red-700"}  bg-green-50 rounded-full`}>
-                      {student.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    <button className="text-indigo-600 hover:text-indigo-900">
-                      Edit
-                    </button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {student.department}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {student.checkin}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">
+                        {student.checkout}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-3 py-1 text-xs font-medium ${
+                          student.status == "Present"
+                            ? "text-green-700"
+                            : "text-red-700"
+                        }  bg-green-50 rounded-full`}
+                      >
+                        {student.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      <button className="text-indigo-600 hover:text-indigo-900">
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              }
             </tbody>
           </table>
         </div>
@@ -743,10 +813,15 @@ function StudentsContent({ activeTab }: { activeTab: string }) {
   const [profile, setProfile] = useState<Array<any>>([]);
   const navigate = useNavigate();
   useEffect(() => {
-    if(activeTab=="students") navigate(`/attendance-system/students`);
+    if (activeTab == "students") navigate(`/attendance-system/students`);
     (async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_API}/profiles`);
+        const response = await axios.get(
+          `${import.meta.env.VITE_API}/profiles`,
+          {
+            withCredentials: true,
+          }
+        );
         setProfile(response.data);
         console.log(response.data);
       } catch (error) {
@@ -766,146 +841,155 @@ function StudentsContent({ activeTab }: { activeTab: string }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {
-        // [
-        //   {
-        //     name: "Sarah Wilson",
-        //     role: "Senior Engineer",
-        //     department: "Engineering",
-        //     image:
-        //       "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-        //   },
-        //   {
-        //     name: "Michael Chen",
-        //     role: "UI Designer",
-        //     department: "Design",
-        //     image:
-        //       "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-        //   },
-        //   {
-        //     name: "Emma Thompson",
-        //     role: "Marketing Manager",
-        //     department: "Marketing",
-        //     image:
-        //       "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-        //   },
-        //   {
-        //     name: "James Rodriguez",
-        //     role: "Sales Executive",
-        //     department: "Sales",
-        //     image:
-        //       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
-        //   },
-        // ]
-        profile.map((profiles, index) => (
-          <div key={index} className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center gap-4">
-              <img
-                src={user}
-                alt={profiles.name}
-                className="h-16 w-16 rounded-full object-cover"
-              />
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">
-                  {profiles.name}
-                </h3>
-                <p className="text-sm text-gray-500">{profiles.description}</p>
-                <p className="text-sm text-gray-500">{profiles.department}</p>
+          // [
+          //   {
+          //     name: "Sarah Wilson",
+          //     role: "Senior Engineer",
+          //     department: "Engineering",
+          //     image:
+          //       "https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+          //   },
+          //   {
+          //     name: "Michael Chen",
+          //     role: "UI Designer",
+          //     department: "Design",
+          //     image:
+          //       "https://images.unsplash.com/photo-1519244703995-f4e0f30006d5?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+          //   },
+          //   {
+          //     name: "Emma Thompson",
+          //     role: "Marketing Manager",
+          //     department: "Marketing",
+          //     image:
+          //       "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+          //   },
+          //   {
+          //     name: "James Rodriguez",
+          //     role: "Sales Executive",
+          //     department: "Sales",
+          //     image:
+          //       "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80",
+          //   },
+          // ]
+          profile.map((profiles, index) => (
+            <div key={index} className="bg-white rounded-xl shadow-sm p-6">
+              <div className="flex items-center gap-4">
+                <img
+                  src={user}
+                  alt={profiles.name}
+                  className="h-16 w-16 rounded-full object-cover"
+                />
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    {profiles.name}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {profiles.description}
+                  </p>
+                  <p className="text-sm text-gray-500">{profiles.department}</p>
+                </div>
+              </div>
+              <div className="mt-4 flex gap-2">
+                <button className="flex-1 px-4 py-2 text-sm text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100">
+                  View Profile
+                </button>
+                <button className="flex-1 px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100">
+                  Edit
+                </button>
               </div>
             </div>
-            <div className="mt-4 flex gap-2">
-              <button className="flex-1 px-4 py-2 text-sm text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100">
-                View Profile
-              </button>
-              <button className="flex-1 px-4 py-2 text-sm text-gray-600 bg-gray-50 rounded-lg hover:bg-gray-100">
-                Edit
-              </button>
-            </div>
-          </div>
-        ))}
+          ))
+        }
       </div>
     </div>
   );
 }
 
 function TimeLogsContent({ activeTab }: { activeTab: string }) {
-  const [timeslogs,setTimeslogs]=useState<Array>([])
+  const [timeslogs, setTimeslogs] = useState<Array>([]);
   const navigate = useNavigate();
 
-  useEffect(()=>{
-    if(activeTab=="logs") navigate(`/attendance-system/logs`);
-    (async()=>{
+  useEffect(() => {
+    if (activeTab == "logs") navigate(`/attendance-system/logs`);
+    (async () => {
       try {
-        const response=await axios.get(`${import.meta.env.VITE_API}/time_logs`)
-        console.log(response.data)
-      const filtered = response.data
-      .filter(item => item.date_time.dates[0].attendance_date !== "--")
-      .map(item => ({
-        date: item.date_time.dates[0].attendance_date,
-        name: item.name,
-        checkin: item.date_time.dates[0].time,
-        status: item.status,
-        checkout:"--",
-        totalhours:"--"
-      }));
-      setTimeslogs(filtered)
-    console.log(filtered);
+        const response = await axios.get(
+          `${import.meta.env.VITE_API}/time_logs`,
+          {
+            withCredentials: true,
+          }
+        );
+        console.log(response.data);
+        const filtered = response.data
+          .filter((item) => item.date_time.dates[0].attendance_date !== "--")
+          .map((item) => ({
+            date: item.date_time.dates[0].attendance_date,
+            name: item.name,
+            checkin: item.date_time.dates[0].time,
+            status: item.status,
+            checkout: "--",
+            totalhours: "--",
+          }));
+        setTimeslogs(filtered);
+        console.log(filtered);
       } catch (error) {
-        console.log(error)
+        console.log(error);
       }
     })();
-  },[])
+  }, []);
 
-    // genarate pdf
-    const generatePDF = () => {
-      console.log("hello")
-      const doc = new jsPDF();
-      doc.setFontSize(18);
-      doc.text('Student Times Log Report', 14, 22);
-      doc.setFontSize(11);
-  
-      const headers = [['DATE','STUDENT', 'CHECK IN', 'CHECK OUT','TOTAL HOURS','STATUS']];
-  
-      const rows = timeslogs.map(std => [
-        std.date,
-        std.name,
-        std.checkin,
-        std.checkout,
-        std.totalhours,
-        std.status
-      ]);
-  
-      doc.autoTable({
-        startY: 30,
-        head: headers,
-        body: rows,
-        theme: 'striped',
-        headStyles: {
-          fillColor: [240, 240, 240],
-          textColor: [80, 80, 80],
-          fontStyle: 'bold',
-        },
-        bodyStyles: {
-          valign: 'middle',
-        },
-        styles: {
-          cellPadding: 4,
-          fontSize: 10,
-          overflow: 'linebreak',
-        },
-        didParseCell: function (data) {
-          if (data.column.index === 4 && data.cell.text[0] === 'on time') {
-            data.cell.styles.fillColor = [212, 237, 218]; // light green
-            data.cell.styles.textColor = [40, 167, 69];    // green
-          }
-          else if(data.column.index === 4 && data.cell.text[0] === 'late'){
-            data.cell.styles.fillColor = [248, 215, 218]; // light red
-            data.cell.styles.textColor = [220, 53, 69];   // red
-          }
+  // genarate pdf
+  const generatePDF = () => {
+    console.log("hello");
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Student Times Log Report", 14, 22);
+    doc.setFontSize(11);
+
+    const headers = [
+      ["DATE", "STUDENT", "CHECK IN", "CHECK OUT", "TOTAL HOURS", "STATUS"],
+    ];
+
+    const rows = timeslogs.map((std) => [
+      std.date,
+      std.name,
+      std.checkin,
+      std.checkout,
+      std.totalhours,
+      std.status,
+    ]);
+
+    doc.autoTable({
+      startY: 30,
+      head: headers,
+      body: rows,
+      theme: "striped",
+      headStyles: {
+        fillColor: [240, 240, 240],
+        textColor: [80, 80, 80],
+        fontStyle: "bold",
+      },
+      bodyStyles: {
+        valign: "middle",
+      },
+      styles: {
+        cellPadding: 4,
+        fontSize: 10,
+        overflow: "linebreak",
+      },
+      didParseCell: function (data) {
+        if (data.column.index === 4 && data.cell.text[0] === "on time") {
+          data.cell.styles.fillColor = [212, 237, 218]; // light green
+          data.cell.styles.textColor = [40, 167, 69]; // green
+        } else if (data.column.index === 4 && data.cell.text[0] === "late") {
+          data.cell.styles.fillColor = [248, 215, 218]; // light red
+          data.cell.styles.textColor = [220, 53, 69]; // red
         }
-      });
-  
-      doc.save('students-times_log.pdf');
-    };
+      },
+    });
+
+    doc.save("students-times_log.pdf");
+  };
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -915,7 +999,10 @@ function TimeLogsContent({ activeTab }: { activeTab: string }) {
             <Filter className="h-5 w-5" />
             Filter
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50" onClick={generatePDF}>
+          <button
+            className="flex items-center gap-2 px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50"
+            onClick={generatePDF}
+          >
             <Download className="h-5 w-5" />
             Export
           </button>
@@ -966,79 +1053,80 @@ function TimeLogsContent({ activeTab }: { activeTab: string }) {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {
-              // [
-              //   {
-              //     date: "2025-03-20",
-              //     name: "Sarah Wilson",
-              //     checkIn: "9:00 AM",
-              //     checkOut: "5:00 PM",
-              //     hours: "8h 00m",
-              //     status: "On Time",
-              //   },
-              //   {
-              //     date: "2025-03-20",
-              //     name: "Michael Chen",
-              //     checkIn: "9:05 AM",
-              //     checkOut: "5:15 PM",
-              //     hours: "8h 10m",
-              //     status: "On Time",
-              //   },
-              //   {
-              //     date: "2025-03-20",
-              //     name: "Emma Thompson",
-              //     checkIn: "9:15 AM",
-              //     checkOut: "5:30 PM",
-              //     hours: "8h 15m",
-              //     status: "Late",
-              //   },
-              //   {
-              //     date: "2025-03-20",
-              //     name: "James Rodriguez",
-              //     checkIn: "9:30 AM",
-              //     checkOut: "5:45 PM",
-              //     hours: "8h 15m",
-              //     status: "Late",
-              //   },
-              // ]
-              timeslogs.map((log, index) => (
-                <tr key={index}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.date}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
-                        {log.name.charAt(0)}
-                      </div>
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">
-                          {log.name}
+                // [
+                //   {
+                //     date: "2025-03-20",
+                //     name: "Sarah Wilson",
+                //     checkIn: "9:00 AM",
+                //     checkOut: "5:00 PM",
+                //     hours: "8h 00m",
+                //     status: "On Time",
+                //   },
+                //   {
+                //     date: "2025-03-20",
+                //     name: "Michael Chen",
+                //     checkIn: "9:05 AM",
+                //     checkOut: "5:15 PM",
+                //     hours: "8h 10m",
+                //     status: "On Time",
+                //   },
+                //   {
+                //     date: "2025-03-20",
+                //     name: "Emma Thompson",
+                //     checkIn: "9:15 AM",
+                //     checkOut: "5:30 PM",
+                //     hours: "8h 15m",
+                //     status: "Late",
+                //   },
+                //   {
+                //     date: "2025-03-20",
+                //     name: "James Rodriguez",
+                //     checkIn: "9:30 AM",
+                //     checkOut: "5:45 PM",
+                //     hours: "8h 15m",
+                //     status: "Late",
+                //   },
+                // ]
+                timeslogs.map((log, index) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {log.date}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 rounded-full bg-gray-100 flex items-center justify-center">
+                          {log.name.charAt(0)}
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">
+                            {log.name}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.checkin}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.checkout}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {log.totalhours}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-3 py-1 text-xs font-medium rounded-full ${
-                        log.status === "on time"
-                          ? "text-green-700 bg-green-50"
-                          : "text-orange-700 bg-orange-50"
-                      }`}
-                    >
-                      {log.status}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {log.checkin}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {log.checkout}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {log.totalhours}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-3 py-1 text-xs font-medium rounded-full ${
+                          log.status === "on time"
+                            ? "text-green-700 bg-green-50"
+                            : "text-orange-700 bg-orange-50"
+                        }`}
+                      >
+                        {log.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              }
             </tbody>
           </table>
         </div>
@@ -1048,59 +1136,66 @@ function TimeLogsContent({ activeTab }: { activeTab: string }) {
 }
 
 function SettingsContent({ activeTab }: { activeTab: string }) {
-const [starttime,setStartime]=useState<string>('')
-const [endtime,setEndtime]=useState<string>('')
-const [lateCount,setLetcount]=useState<number>()
-const navigate = useNavigate();
-const showToastMessage = () => {
-  toast.success("Setting Updated !", {
-    position: "top-right"
-  });
-};
-function convertTo12Hour(time24: string): string {
-  const [hourStr, minute] = time24.split(':');
-  let hour = parseInt(hourStr, 10);
-  const ampm = hour >= 12 ? 'PM' : 'AM';
-  hour = hour % 12 || 12; // convert "0" to "12"
-  let second="00"
-  return `${hour}:${minute}:${second} ${ampm}`;
-}
-const handleSettings=async ()=>{
-  const str = convertTo12Hour(starttime);
-  const endt = convertTo12Hour(endtime);
- 
-  const settings={
-    "id": 1,
-    "start_time": str,
-    "end_time": endt,
-    "late_count": lateCount
+  const [starttime, setStartime] = useState<string>("");
+  const [endtime, setEndtime] = useState<string>("");
+  const [lateCount, setLetcount] = useState<number>();
+  const navigate = useNavigate();
+  const showToastMessage = () => {
+    toast.success("Setting Updated !", {
+      position: "top-right",
+    });
+  };
+  function convertTo12Hour(time24: string): string {
+    const [hourStr, minute] = time24.split(":");
+    let hour = parseInt(hourStr, 10);
+    const ampm = hour >= 12 ? "PM" : "AM";
+    hour = hour % 12 || 12; // convert "0" to "12"
+    let second = "00";
+    return `${hour}:${minute}:${second} ${ampm}`;
   }
-  try {
-    const response=await axios.put(`${import.meta.env.VITE_API}/settings",settings`)
-    console.log(response)
-    showToastMessage();
-    // alert("success")
-  } catch (error) {
-    console.log(error)
-  }
-}
+  const handleSettings = async () => {
+    const str = convertTo12Hour(starttime);
+    const endt = convertTo12Hour(endtime);
 
-useEffect(() => {
-  if(activeTab=="settings") navigate(`/attendance-system/settings`);
-  (async () => {
+    const settings = {
+      id: 1,
+      start_time: str,
+      end_time: endt,
+      late_count: lateCount,
+    };
     try {
-      let response = await axios.get(`${import.meta.env.VITE_API}/settings`);
-      let setting=response.data;
-      setStartime(setting.start);
-      setEndtime(setting.end);
-      setLetcount(setting.late)
+      const response = await axios.put(
+        `${import.meta.env.VITE_API}/settings",settings`,
+        {
+          withCredentials: true,
+        }
+      );
       console.log(response);
-      console.log(typeof starttime)
+      showToastMessage();
+      // alert("success")
     } catch (error) {
       console.log(error);
     }
-  })();
-}, []);
+  };
+
+  useEffect(() => {
+    if (activeTab == "settings") navigate(`/attendance-system/settings`);
+    (async () => {
+      try {
+        let response = await axios.get(`${import.meta.env.VITE_API}/settings`, {
+          withCredentials: true,
+        });
+        let setting = response.data;
+        setStartime(setting.start);
+        setEndtime(setting.end);
+        setLetcount(setting.late);
+        console.log(response);
+        console.log(typeof starttime);
+      } catch (error) {
+        console.log(error);
+      }
+    })();
+  }, []);
   return (
     <div className="space-y-6">
       <ToastContainer />
@@ -1129,7 +1224,7 @@ useEffect(() => {
                   type="time"
                   defaultValue={starttime}
                   className="w-full border-gray-200 rounded-lg"
-                  onChange={(e)=> setStartime(e.target.value)}
+                  onChange={(e) => setStartime(e.target.value)}
                 />
               </div>
               <div>
@@ -1140,7 +1235,7 @@ useEffect(() => {
                   type="time"
                   defaultValue={endtime}
                   className="w-full border-gray-200 rounded-lg"
-                  onChange={(e)=> setEndtime(e.target.value)}
+                  onChange={(e) => setEndtime(e.target.value)}
                 />
               </div>
             </div>
@@ -1154,7 +1249,7 @@ useEffect(() => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-gray-700">
-                  Threshold time
+                    Threshold time
                   </p>
                   <p className="text-xs text-gray-500">
                     Allow late check-in up to specified minutes
@@ -1166,7 +1261,7 @@ useEffect(() => {
                   min="0"
                   max="60"
                   className="w-20 border-gray-200 rounded-lg"
-                  onChange={(e)=>setLetcount(parseInt(e.target.value))}
+                  onChange={(e) => setLetcount(parseInt(e.target.value))}
                 />
               </div>
               {/* <div className="flex items-center justify-between">
@@ -1258,7 +1353,10 @@ useEffect(() => {
             <button className="px-4 py-2 text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50">
               Cancel
             </button>
-            <button className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700" onClick={handleSettings}>
+            <button
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              onClick={handleSettings}
+            >
               Save Changes
             </button>
           </div>
@@ -1269,5 +1367,3 @@ useEffect(() => {
 }
 
 export default App;
-
-

@@ -23,6 +23,13 @@ class TeacherModel(Base):
     password = Column(String(80), nullable=False)
     role = Column(String(20), default="user")  # Can be "user" or "admin"
 
+
+    def __init__(self, name, email, password, role="user"):
+        self.name = name
+        self.email = email
+        self.password = password
+        self.role = role
+
     @classmethod
     def find_by_email(cls, email: str) -> "TeacherModel":
         return Session.query(cls).filter_by(email=email).first()
