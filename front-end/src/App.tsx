@@ -42,6 +42,7 @@ function App() {
     user: null,
     email: null,
   });
+  const navigate = useNavigate();
   // if(activeTab=="attendance") console.log("hello")
   const startCamera = async () => {
     try {
@@ -146,10 +147,25 @@ function App() {
         }
 
       } catch (error) {
+        navigate('/')
         console.log(error)
       }
     })();
   },[])
+  const signouthandler=async ()=>{
+    try {
+      const response = await axios.delete(`${import.meta.env.VITE_API}/signout`, {
+        withCredentials: true
+      })
+
+      if(response.data.msg ==="success"){
+        navigate('/')
+      }
+    } catch (error) {
+      console.log(error);
+      alert("signout failed");
+    }
+  }
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
@@ -237,7 +253,7 @@ function App() {
     </div>
     
     <div className="flex">
-      <button className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700">
+      <button className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700" onClick={()=>signouthandler()}>
         Sign Out
       </button>
       <button className="block w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-700" onClick={() => setShowSignOutPopup((prev) => !prev)}>

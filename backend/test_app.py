@@ -215,6 +215,7 @@ def dashboard():
     return student_json, 200
 # profile
 @app.route('/profiles',methods=['GET'])
+@token_required
 def profile():
     students = StudentModel.find_all()
     profiles=[]
@@ -229,6 +230,7 @@ def profile():
     return jsonify(profiles),200
 # times log 
 @app.route('/time_logs', methods=['GET'])
+@token_required
 def time_logs():
     students = StudentModel.find_all()
     attendances = AttendanceModel.find_all()
@@ -283,6 +285,7 @@ def time_logs():
     # return jsonify({"error": "Missing 'id'"}), 200
 # settings
 @app.route('/settings', methods=['PUT'])
+@token_required
 def update_settings():
     data = request.get_json()
     setting_id = data.get("id")
@@ -314,6 +317,7 @@ def update_settings():
 
 
 @app.route('/settings', methods=['GET'])
+@token_required
 def get_settings():
     settings=Settings.find_by_id(1)
     if settings:
@@ -388,6 +392,12 @@ def get_signin():
             return jsonify({"msg": "unauthorized"}), 401
     else:
         return jsonify({"msg":"user no find"}), 409
+@app.route('/signout',methods=['DELETE'])
+def signout():
+    resp = make_response(jsonify({"msg": "success"}))
+    resp.delete_cookie(cookie_name)
+    print("user signout")
+    return resp, 200 
 # ====== Start Server ======
 if __name__ == '__main__':
     print("[INFO] Starting Flask-SocketIO server...")
