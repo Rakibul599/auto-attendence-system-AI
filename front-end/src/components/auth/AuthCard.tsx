@@ -21,9 +21,11 @@ export const AuthCard: React.FC<AuthCardProps> = ({ initialView  }) => {
       </div>
       
       <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">
-        {view === 'login' ? 'Welcome back' : 'Create an account'}
+        {view === 'login' ? 'Attendance-AI' : 'Attendance-AI'}
       </h2>
-      
+      <h2 className="text-md font-bold text-center text-gray-800 mb-2">
+        {view === 'login' ? 'Teachers Login' : 'Create an account'}
+      </h2>
       <p className="text-gray-500 text-center mb-6">
         {view === 'login' 
           ? 'Enter your credentials to access your account' 
