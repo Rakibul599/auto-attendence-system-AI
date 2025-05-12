@@ -1179,9 +1179,11 @@ function SettingsContent({ activeTab }: { activeTab: string }) {
       end_time: endt,
       late_count: lateCount,
     };
+    console.log(settings)
     try {
       const response = await axios.put(
-        `${import.meta.env.VITE_API}/settings",settings`,
+        `${import.meta.env.VITE_API}/settings`,
+        settings, 
         {
           withCredentials: true,
         }

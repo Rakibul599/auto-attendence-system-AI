@@ -25,7 +25,8 @@ load_dotenv()
 SERVER_PORT = int(os.getenv("SERVER_PORT", 5000))
 # ====== Flask App Setup ======
 app = Flask(__name__)
-CORS(app,supports_credentials=True)
+CORS(app,supports_credentials=True,methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],)
+
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # ====== Load Known Encodings from Pickle File ======
